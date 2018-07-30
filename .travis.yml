@@ -1,0 +1,6 @@
+language: csharp
+solution: src/OpenWheels.Samples.sln
+dotnet: 2.1.300
+mono: none
+script: dotnet build src/OpenWheels.Samples.sln
+
