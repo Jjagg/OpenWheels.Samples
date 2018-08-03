@@ -3,16 +3,13 @@ using System.Numerics;
 
 using OpenWheels;
 using OpenWheels.Rendering;
-using OpenWheels.Rendering.ImageSharp;
 using OpenWheels.Veldrid;
-
-using SixLabors.Fonts;
 
 using Veldrid;
 using Veldrid.Sdl2;
 using Veldrid.StartupUtilities;
 
-namespace Font
+namespace Primitives
 {
     class Program
     {
@@ -25,50 +22,56 @@ namespace Font
             // this guy actually draws everything to the backbuffer
             var renderer = new VeldridRenderer(graphicsDevice);
 
+            // OpenWheels always requires a texture to render, so renderer implementations only need a single shader
+            // Even for untextured primitives we need to have a texture set. So we create a white 1x1 texture for those.
+            Span<Color> blankSpan = stackalloc Color[] { Color.White };
+            var blank = renderer.RegisterTexture(blankSpan, 1, 1);
+
             // Our batcher lets use make calls to render lots of different primitive shapes and text.
             // When we're done the batcher sends the draw calls to the renderer which will actually do the drawing.
-            // StringIdBatcher is an extension of batcher that supports registering and setting fonts and
-            // textures using a string identifier. Internally in OpenWheels textures are identified by an integer.
-            var batcher = new StringIdBatcher(renderer);
-
-            const string fontId = "font";
-
-            // This creates a font atlas and the corresponding image for the letters.
-            // By default it includes only the basic Latin characters in the atlas.
-            // The created image is registered with the renderer and the font can be
-            // set using the StringIdBatcher by calling `SetFont(fontId)`.
-
-            // LoadSystemFont and other extension methods to load textures and fonts into a batcher in a single method call
-            // are defined in the OpenWheels.Rendering.ImageSharp library.
-            // Using this library is the easiest way to handle font and texture loading, but it's a separate lib so you can
-            // use another solution if you prefer.
-
-            // Note: System fonts only work on Windows, you can use a font file and call instead `LoadFont` on other platforms.
-            batcher.LoadSystemFont("Consolas", 24, '?', fontId);
-
-            // set the font
-            batcher.SetFont(fontId);
+            var batcher = new Batcher(renderer);
 
             var first = true;
 
             // We run the game loop here and do our drawing inside of it.
-            VeldridRunLoop(window, graphicsDevice, () => 
+            VeldridRunLoop(window, graphicsDevice, () =>
             {
                 renderer.Clear(Color.CornflowerBlue);
 
                 // Start a new batch
                 batcher.Start();
 
-                // Note that drawing text changes the active texture to the font atlas texture.
-                // So if you're rendering other stuff, make sure you set a texture before drawing anything else
-                batcher.DrawText("Hello World!", new Vector2(100f), Color.Black);
+                // set the texture to the blank one we registered
+                batcher.SetTexture(blank);
 
-                // We rotate and translate this one a little bit for style 😎
-                batcher.TransformMatrix = Matrix4x4.CreateTranslation(52, -154, 0) * Matrix4x4.CreateRotationZ((float)Math.PI / 2f);
-                batcher.DrawText("Hell  World!", Vector2.Zero, Color.Black, va: VerticalAlignment.Bottom);
+                // Let's draw some primitives. The API is very obvious, you can use IntelliSense to find supported shapes.
 
-                // Reset the transformation matrix
-                batcher.TransformMatrix = Matrix4x4.Identity;
+                batcher.FillRect(new RectangleF(10, 10, 100, 100), Color.LimeGreen);
+
+                // Note that subsequent line segments are connected at their corners
+                Span<Vector2> points = stackalloc Vector2[] { new Vector2(140, 20), new Vector2(320, 20), new Vector2(320, 120), new Vector2(420, 120) };
+                batcher.DrawLineStrip(points, Color.Red, 20);
+
+                batcher.FillTriangle(new Vector2(500, 20), new Vector2(600, 70), new Vector2(500, 120), Color.White);
+
+                // The tessellation of the circle and corners for the rounded rectangle can be adjusted with the maxError parameter
+                batcher.DrawCircle(new Vector2(700, 70), 50, Color.BlueViolet, 2);
+
+                batcher.FillRoundedRect(new RectangleF(790, 10, 100, 100), 10, Color.SandyBrown);
+
+                var pa = new Vector2(50, 220);
+                var pb = new Vector2(150, 120);
+                var pc = new Vector2(250, 220);
+                var curve = new QuadraticBezier(pa, pb, pc);
+                // The segmentation for curves can be adjusted with the segmentsPerLength parameter
+                // Using that parameter and an (over)estimate of the length of the curve the number of segments
+                // is computed
+                batcher.DrawCurve(curve, Color.DarkGoldenrod, 2);
+
+                var o = new Vector2(0, 100);
+                var pd = new Vector2(200, 420);
+                var curve2 = new CubicBezier(pa + o, pb + o, pd, pc + o);
+                batcher.DrawCurve(curve2, Color.DarkOrchid, 2);
 
                 // Finish the batch and let the renderer draw everything to the back buffer.
                 batcher.Finish();
@@ -94,7 +97,7 @@ namespace Font
                 Y = 100,
                 WindowWidth = 960,
                 WindowHeight = 540,
-                WindowTitle = "OpenWheels Text Rendering"
+                WindowTitle = "OpenWheels Batcher Primitives"
             };
 
             window = VeldridStartup.CreateWindow(ref windowCI);

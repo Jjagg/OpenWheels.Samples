@@ -1,0 +1,10 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" TreatAsLocalProperty="OutDir">
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OpenWheelsVersion>0.1.25-g7ea88ab455</OpenWheelsVersion>
+    <OpenWheelsVeldridVersion>0.1.14-g5751fedd37</OpenWheelsVeldridVersion>
+  </PropertyGroup>
+</Project>
