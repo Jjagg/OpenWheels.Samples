@@ -3,11 +3,14 @@ using System.Numerics;
 
 using OpenWheels;
 using OpenWheels.Rendering;
+using OpenWheels.Rendering.ImageSharp;
 using OpenWheels.Veldrid;
 
 using Veldrid;
 using Veldrid.Sdl2;
 using Veldrid.StartupUtilities;
+
+using Rectangle = OpenWheels.Rectangle;
 
 namespace Texture
 {
@@ -22,10 +25,6 @@ namespace Texture
             // this guy actually draws everything to the backbuffer
             var renderer = new VeldridRenderer(graphicsDevice);
 
-            // OpenWheels always requires a texture to render, so renderer implementations only need a single shader
-            // Even for untextured primitives we need to have a texture set. So we create a white 1x1 texture for those.
-            Span<Color> blankSpan = stackalloc Color[] { Color.White };
-
             // Our batcher lets use make calls to render lots of different primitive shapes and text.
             // When we're done the batcher sends the draw calls to the renderer which will actually do the drawing.
 
@@ -33,7 +32,23 @@ namespace Texture
             // and font with a string identifier.
             var batcher = new Batcher(renderer);
 
-            var first = true;
+            var checkerBoardTextureId = batcher.LoadTexture("checkerboard.png");
+
+            // OpenWheels defines a sprite as an image that's part of a texture
+            // To create a sprite, we pass a texture and a region of that texture (in pixels) that contains the actual image
+            // let's add a sprite that draws 3/4th of the checkerboard
+            // So if our original texture looks like this:
+            //         |##  |
+            //         |  ##|
+            // We'll create a sprite that looks like this:
+            //         |## |
+            //         |  #|
+
+            var cbSize = renderer.GetTextureSize(checkerBoardTextureId);
+            var subSpriteRect = new Rectangle(0, 0, (cbSize.Width * 3) / 4, (cbSize.Height * 3) / 4);
+            var checkerBoardSubSprite = new Sprite(checkerBoardTextureId, subSpriteRect);
+
+            var frame = 0;
 
             // We run the game loop here and do our drawing inside of it.
             VeldridRunLoop(window, graphicsDevice, () =>
@@ -43,15 +58,66 @@ namespace Texture
                 // Start a new batch
                 batcher.Start();
 
+                // we set the texture using the texture id we got back when registering the texture
+                // OpenWheels internally only works with sprites
+                // If you set a texture on a batcher it will convert it to a sprite with the region being the
+                // entire texture bounds
+                batcher.SetTexture(checkerBoardTextureId);
+
+                // The Batcher API is stateful. Anything we render now will use the checkerboard texture.
+                // By default the UV coordinates 0, 0, 1, 1 are use, so our texture is stretched
+                batcher.FillRect(new RectangleF(50, 20, 100, 100), Color.White);
+                batcher.FillRect(new RectangleF(200, 20, 100, 200), Color.White);
+
+                // Let's draw our subsprite
+                batcher.Sprite = checkerBoardSubSprite;
+                batcher.FillRect(new RectangleF(350, 20, 100, 100), Color.White);
+
+                // We can only draw 1 texture in a single draw call, but since our subsprite actually uses the same
+                // texture as our full checkerboard the batcher can still combine the calls into a single batch.
+
+                batcher.SetTexture(checkerBoardTextureId);
+                // Most of the primitives support UV coordinates one way or another.
+                batcher.FillCircle(new Vector2(550, 70), 50, Color.White);
+                batcher.FillRoundedRect(new RectangleF(650, 20, 100, 100), 15, Color.White);
+
+                var v1 = new Vector2(50, 280);
+                var v2 = new Vector2(150, 380);
+                batcher.DrawLine(v1, v2, Color.White, 6f);
+                // Note that the texture rotates with the line
+                // This is different from the circle(segment) primitives where we draw a cutout of the active texture
+                // There are a lot of ways to UV-map shapes, but OpenWheels currently picks just one for each shape
+
+                // we can provide custom UV coordinates to most primitives
+                // let's make our texture loop while keeping it's aspect ratio
+
+                // The sampler should wrap to be able to loop the texture (the default sampler state is LinearClamp)
+                // This state sticks across frames, so we could set it before the render loop as well
+                batcher.SamplerState = SamplerState.LinearWrap;
+                var v3 = new Vector2(200, 280);
+                var v4 = new Vector2(300, 380);
+                // we want our aspect ratio to be 1:1, so if we have a primitive of size
+                const float lineWidth = 10f;
+                var uvHeight = Vector2.Distance(v3, v4) / lineWidth;
+                batcher.DrawLine(v3, v4, Color.White, lineWidth, new RectangleF(0, 0, 1, uvHeight));
+
+                // The color value we can pass to these methods is multiplied with our texture color at each pixel.
+                batcher.FillRect(new RectangleF(350, 280, 100, 100), Color.Red);
+
                 // Finish the batch and let the renderer draw everything to the back buffer.
                 batcher.Finish();
 
-                if (first)
+                if (frame < 2)
                 {
+                    // Note that the first frame renders in two batches because we change the sampler state
+                    // halfway through.
+                    // Every subsequent frame render in a single batch because the sampler state stays at LinearClamp
+                    Console.WriteLine("Frame " + frame);
                     Console.WriteLine("Vertices: " + batcher.VerticesSubmitted);
                     Console.WriteLine("Indices: " + batcher.IndicesSubmitted);
                     Console.WriteLine("Batches: " + batcher.BatchCount);
-                    first = false;
+                    Console.WriteLine();
+                    frame++;
                 }
             });
 
