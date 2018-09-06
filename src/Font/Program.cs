@@ -64,11 +64,11 @@ namespace Font
                 batcher.DrawText("Hello World!", new Vector2(100f), Color.Black);
 
                 // We rotate and translate this one a little bit for style 😎
-                batcher.TransformMatrix = Matrix4x4.CreateTranslation(52, -154, 0) * Matrix4x4.CreateRotationZ((float)Math.PI / 2f);
+                batcher.PositionTransform = Matrix3x2.CreateTranslation(52, -154) * Matrix3x2.CreateRotation((float)Math.PI / 2f);
                 batcher.DrawText("Hell  World!", Vector2.Zero, Color.Black, va: VerticalAlignment.Bottom);
 
                 // Reset the transformation matrix
-                batcher.TransformMatrix = Matrix4x4.Identity;
+                batcher.PositionTransform = Matrix3x2.Identity;
 
                 // Finish the batch and let the renderer draw everything to the back buffer.
                 batcher.Finish();

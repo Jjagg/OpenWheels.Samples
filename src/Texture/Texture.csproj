@@ -9,7 +9,6 @@
   <ItemGroup>
     <PackageReference Include="OpenWheels.Rendering.ImageSharp" Version="$(OpenWheelsVersion)" />
     <PackageReference Include="OpenWheels.Veldrid" Version="$(OpenWheelsVeldridVersion)" />
-    <PackageReference Include="Veldrid.ImageSharp" Version="$(VeldridVersion)" />
     <PackageReference Include="Veldrid.SDL2" Version="$(VeldridVersion)" />
     <PackageReference Include="Veldrid.StartupUtilities" Version="$(VeldridVersion)" />
   </ItemGroup>

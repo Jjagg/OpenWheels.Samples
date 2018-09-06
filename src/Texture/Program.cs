@@ -39,8 +39,11 @@ namespace Texture
             // let's add a sprite that draws 3/4th of the checkerboard
             // So if our original texture looks like this:
             //         |##  |
+            //         |##  |
+            //         |  ##|
             //         |  ##|
             // We'll create a sprite that looks like this:
+            //         |## |
             //         |## |
             //         |  #|
 
@@ -78,7 +81,7 @@ namespace Texture
 
                 batcher.SetTexture(checkerBoardTextureId);
                 // Most of the primitives support UV coordinates one way or another.
-                batcher.FillCircle(new Vector2(550, 70), 50, Color.White);
+                batcher.FillCircle(new Vector2(550, 70), 50, Color.White, .25f);
                 batcher.FillRoundedRect(new RectangleF(650, 20, 100, 100), 15, Color.White);
 
                 var v1 = new Vector2(50, 280);
@@ -88,18 +91,26 @@ namespace Texture
                 // This is different from the circle(segment) primitives where we draw a cutout of the active texture
                 // There are a lot of ways to UV-map shapes, but OpenWheels currently picks just one for each shape
 
-                // we can provide custom UV coordinates to most primitives
-                // let's make our texture loop while keeping it's aspect ratio
+                // we can set a matrix to transform UV coordinates
+                // let's make our texture loop in length while keeping it's aspect ratio and UV across its width.
 
                 // The sampler should wrap to be able to loop the texture (the default sampler state is LinearClamp)
                 // This state sticks across frames, so we could set it before the render loop as well
                 batcher.SamplerState = SamplerState.LinearWrap;
                 var v3 = new Vector2(200, 280);
                 var v4 = new Vector2(300, 380);
-                // we want our aspect ratio to be 1:1, so if we have a primitive of size
                 const float lineWidth = 10f;
+
+                // we want our UV aspect ratio to be 1:1, but it's lineWidth:length and we want to use
+                // the coordinate system of the width, so we normalize height to get the right aspect ratio
+                // (note that height is defined as the forward direction of the line)
+
                 var uvHeight = Vector2.Distance(v3, v4) / lineWidth;
-                batcher.DrawLine(v3, v4, Color.White, lineWidth, new RectangleF(0, 0, 1, uvHeight));
+                batcher.UvTransform = Matrix3x2.CreateScale(1f, uvHeight);
+                batcher.DrawLine(v3, v4, Color.White, lineWidth);
+
+                // Reset the uv transform
+                batcher.UvTransform = Matrix3x2.Identity;
 
                 // The color value we can pass to these methods is multiplied with our texture color at each pixel.
                 batcher.FillRect(new RectangleF(350, 280, 100, 100), Color.Red);
